@@ -4,7 +4,7 @@ UpdatePipeline::UpdateAllMetaData.pm   - Take in a list of study names, and a VR
 
 =head1 SYNOPSIS
 
-my $pipeline = UpdatePipeline::UpdateAllMetaData->new(study_names => \@study_names, _vrtrack => $self->_vrtrack);
+my $pipeline = UpdatePipeline::UpdateAllMetaData->new(study_ids => \@study_ids, _vrtrack => $self->_vrtrack);
 $pipeline->update();
 
 =cut
@@ -34,7 +34,6 @@ has '_database_settings'    => ( is => 'rw', lazy_build => 1,            isa => 
 has 'verbose_output'        => ( is => 'rw', default    => 0,            isa => 'Bool');
 has 'update_if_changed'     => ( is => 'rw', default    => 0,            isa => 'Bool');
 has 'dont_use_warehouse'    => ( is => 'ro', default    => 0,            isa => 'Bool');
-has 'use_supplier_name'     => ( is => 'ro', default    => 0,            isa => 'Bool');
 has 'no_pending_lanes'      => ( is => 'ro', default    => 0,            isa => 'Bool');
 has 'override_md5'          => ( is => 'ro', default    => 0,            isa => 'Bool');
 has 'add_raw_reads'         => ( is => 'ro', default    => 0,            isa => 'Bool');
@@ -47,18 +46,21 @@ has 'environment'           => ( is => 'rw', default    => 'production', isa => 
 has 'common_name_required'  => ( is => 'rw', default    => 1,            isa => 'Bool');
 has 'taxon_id'              => ( is => 'rw', default    => 0,            isa => 'Int' );
 has 'species_name'          => ( is => 'ro',                             isa => 'Maybe[Str]' );
+has 'gs_file_path'          => ( is => 'ro',                             isa => 'Maybe[Str]' );
 has 'vrtrack_lanes'         => ( is => 'ro',                             isa => 'Maybe[HashRef]' );
+has 'study_ids_names'       => ( is => 'ro',                             isa => 'HashRef' );
 
+my $config_location = '/software/vertres/bin-external/update_pipeline/config/production';
 sub _build__config_settings
 {
    my ($self) = @_;
-   \%{Pathogens::ConfigSettings->new(environment => $self->environment, filename => 'config.yml')->settings()};
+   \%{Pathogens::ConfigSettings->new(environment => $self->environment, filename => $config_location.'/config.yml')->settings()};
 }
 
 sub _build__database_settings
 {
   my ($self) = @_;
-  \%{Pathogens::ConfigSettings->new(environment => $self->environment, filename => 'database.yml')->settings()};
+  \%{Pathogens::ConfigSettings->new(environment => $self->environment, filename => $config_location.'/database.yml')->settings()};
 }
 
 
@@ -92,10 +94,7 @@ sub update
         )
       {
           $self->_post_populate_file_metadata($file_metadata) unless($self->dont_use_warehouse);
-		  my $filter_pending = ( !$self->no_pending_lanes || ( $self->no_pending_lanes && defined $file_metadata->lane_manual_qc && $file_metadata->lane_manual_qc ne 'pending' ) );
-		  my $filter_id_run = ( !$self->specific_run_id || ( $self->specific_run_id && defined $file_metadata->id_run && $self->specific_run_id == $file_metadata->id_run));
-		  my $filter_min_run = ( !$self->specific_min_run || ( $self->specific_min_run && defined $file_metadata->id_run && $self->specific_min_run < $file_metadata->id_run));
-          $self->_update_lane($file_metadata) unless ( !$filter_pending  || !$filter_id_run || !$filter_min_run );
+          $self->_update_lane($file_metadata);
       }
     };
     if(my $exception = Exception::Class->caught())
@@ -118,7 +117,7 @@ sub _update_lane
 {
   my ($self, $file_metadata) = @_;
   eval {
-    my $vproject = UpdatePipeline::VRTrack::Project->new(name => $file_metadata->study_name, external_id => $file_metadata->study_ssid, _vrtrack => $self->_vrtrack)->vr_project();
+    my $vproject = UpdatePipeline::VRTrack::Project->new(name => $self->study_ids_names->{$file_metadata->study_ssid}, external_id => $file_metadata->study_ssid, _vrtrack => $self->_vrtrack)->vr_project();
     if(defined($file_metadata->study_accession_number))
     {
       my $vstudy   = UpdatePipeline::VRTrack::Study->new(accession => $file_metadata->study_accession_number, _vr_project => $vproject)->vr_study();
@@ -127,33 +126,31 @@ sub _update_lane
     
     my $vr_sample = UpdatePipeline::VRTrack::Sample->new(
       common_name_required => $self->common_name_required,
-      name => $file_metadata->sample_name,  
+      name => $file_metadata->public_name,  
       external_id => $file_metadata->sample_ssid, 
       common_name => $file_metadata->sample_common_name, 
       accession => $file_metadata->sample_accession_number,
       supplier_name => $file_metadata->supplier_name,
-      use_supplier_name => $self->use_supplier_name,
+      cohort_name => $file_metadata->cohort_name,
+      control => $file_metadata->control,
       taxon_id => $self->taxon_id,
       _vrtrack => $self->_vrtrack,
       _vr_project => $vproject)->vr_sample();
       
     my $vr_library = UpdatePipeline::VRTrack::Library->new(
-      name => $file_metadata->library_name,
-      external_id        => $file_metadata->library_ssid,
-      fragment_size_from => $file_metadata->fragment_size_from,
-      fragment_size_to   => $file_metadata->fragment_size_to,
-      _vrtrack           => $self->_vrtrack,
-      _vr_sample         => $vr_sample)->vr_library();
+      name                 => $file_metadata->library_name,
+      external_id          => $file_metadata->library_ssid,
+      library_tag_sequence => $file_metadata->beadchip . '_' . $file_metadata->beadchip_section,
+      _vrtrack             => $self->_vrtrack,
+      _vr_sample           => $vr_sample)->vr_library();
 
     my $vr_lane = UpdatePipeline::VRTrack::Lane->new(
       name          => $file_metadata->file_name_without_extension,
-      paired        => $file_metadata->lane_is_paired_read,
-      npg_qc_status => $file_metadata->lane_manual_qc,
-      raw_reads     => $file_metadata->total_reads, 
-      add_raw_reads => $self->add_raw_reads, 
+      accession     => $file_metadata->lane_accession,
+      storage_path  => $file_metadata->storage_path,
       _vrtrack      => $self->_vrtrack,
-      _vr_library   => $vr_library)->vr_lane();
-
+      _vr_library   => $vr_library,
+      _vr_sample    => $vr_sample)->vr_lane();
 
     UpdatePipeline::VRTrack::File->new(
       name => $file_metadata->file_name,
@@ -163,10 +160,6 @@ sub _update_lane
       _vrtrack => $self->_vrtrack,
       _vr_lane => $vr_lane)->vr_file();
       
-    if(defined($file_metadata->mate_file_name))
-    {
-      UpdatePipeline::VRTrack::File->new(name => $file_metadata->mate_file_name ,file_type => $file_metadata->mate_file_type_number($file_metadata->mate_file_type), md5 => $file_metadata->mate_file_md5 ,_vrtrack => $self->_vrtrack,_vr_lane => $vr_lane)->vr_file();
-    }
   };
   if(my $exception = Exception::Class->caught())
   {
@@ -184,7 +177,6 @@ sub _withdraw_lanes
 {
 	#Subroutine that withdraws lanes that have been deleted from iRODS, but remain in the database.
 	#This can only called if the -wdr flag is set on the command lane explicitly.
-	print "We are withdrawing.......\n";
 	my ($self) = @_;
   	foreach my $lane ( keys %{$self->vrtrack_lanes} ) {
 		my $lane_to_withdraw = VRTrack::Lane->new($self->_vrtrack, $self->vrtrack_lanes->{$lane});

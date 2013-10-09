@@ -23,6 +23,7 @@ use Exception::Class (
     UpdatePipeline::Exceptions::InvalidSpreadsheetMetaData=> { description => "The data in the spreadsheet is invalid" },
     UpdatePipeline::Exceptions::UnknownFileType           => { description => "New file type detected" },
     UpdatePipeline::Exceptions::CantFindSequencingFile    => { description => "Sequencing file in spreadsheet not found on disk" },
+    UpdatePipeline::Exceptions::NoPermissionOnIrodsFile   => { description => "User does not have permission to download a file from iRODS" },
 );  
 
 1;

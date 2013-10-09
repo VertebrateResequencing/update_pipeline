@@ -32,9 +32,6 @@ sub _differences_between_file_and_lane_meta_data
 {
   my ($self) = @_;
   
-  # ignore files where there are only a few reads, its usually bad data
-  return 0 if (defined($self->file_meta_data->total_reads ) && $self->file_meta_data->total_reads < 10000);
-  
   # to stop exception being thrown where the common name is missing from the file metadata, but is not required
   $self->file_meta_data->sample_common_name('default') if (! $self->common_name_required && not defined $self->file_meta_data->sample_common_name);
   
@@ -46,7 +43,7 @@ sub _differences_between_file_and_lane_meta_data
 
   return 1 unless(defined $self->lane_meta_data);
 
-  my @required_keys = ("sample_name", "study_name","library_name", "total_reads","sample_accession_number","study_accession_number", "sample_common_name", "fragment_size_from","fragment_size_to");
+  my @required_keys = ("sample_name", "study_name","library_name", "sample_accession_number","study_accession_number", "sample_common_name");
   for my $required_key (@required_keys)
   {
     return 1 unless defined($self->lane_meta_data->{$required_key});
@@ -64,15 +61,7 @@ sub _differences_between_file_and_lane_meta_data
     }
   }
 
-  # check to see if sample name has changed
-  if(defined($self->file_meta_data->sample_name) && defined($self->lane_meta_data->{sample_name})
-     && $self->_normalise_sample_name($self->file_meta_data->sample_name) ne $self->_normalise_sample_name($self->lane_meta_data->{sample_name}) )
-  { 
-	my $error_message = "Mismatched data for ".$self->file_meta_data->file_name_without_extension." [sample name]: iRODS (".$self->_normalise_sample_name($self->file_meta_data->sample_name)."), vrtrack (".$self->_normalise_sample_name($self->lane_meta_data->{sample_name}).")";
-    UpdatePipeline::Exceptions::PathToLaneChanged->throw( error => $error_message );
-  }
-
-  my @fields_to_check_file_defined_and_not_equal =  $self->common_name_required ? ("study_name", "library_name","sample_common_name", "study_accession_number","sample_accession_number","library_ssid", "lane_is_paired_read","lane_manual_qc", "study_ssid","sample_ssid") : ("study_name", "library_name", "study_accession_number","sample_accession_number","library_ssid", "lane_is_paired_read","lane_manual_qc", "study_ssid","sample_ssid");
+  my @fields_to_check_file_defined_and_not_equal =  $self->common_name_required ? ("study_name", "library_name","sample_common_name", "study_accession_number","sample_accession_number","library_ssid", "study_ssid","sample_ssid") : ("study_name", "library_name", "study_accession_number","sample_accession_number","library_ssid","study_ssid","sample_ssid");
   for my $field_name (@fields_to_check_file_defined_and_not_equal)
   {
     if( $self->_file_defined_and_not_equal($self->file_meta_data->$field_name, $self->lane_meta_data->{$field_name}) )
@@ -85,11 +74,7 @@ sub _differences_between_file_and_lane_meta_data
   {
     return 1;
   }
-  elsif( defined($self->file_meta_data->total_reads ) && $self->file_meta_data->total_reads > 10000 && $self->lane_meta_data->{lane_processed} > 0 &&   !( $self->file_meta_data->total_reads >= $self->lane_meta_data->{total_reads}*0.95  && $self->file_meta_data->total_reads <= $self->lane_meta_data->{total_reads}*1.05 ) )
-  {
-    UpdatePipeline::Exceptions::TotalReadsMismatch->throw( error => $self->file_meta_data->file_name_without_extension );
-  }
-
+  
 
   return 0; 
 }

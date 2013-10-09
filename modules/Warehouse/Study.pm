@@ -52,7 +52,7 @@ sub _populate_name_from_ssid
   if(! defined($self->file_meta_data->study_name) && defined($self->file_meta_data->study_ssid)  )
   {
     my $study_ssid = $self->file_meta_data->study_ssid;
-    my $sql = qq[select name  from current_studies where internal_id = "$study_ssid" limit 1;];
+    my $sql = qq[select name from current_studies where internal_id = "$study_ssid" limit 1;];
     my $sth = $self->_dbh->prepare($sql);
     $sth->execute;
     my @study_warehouse_details  = $sth->fetchrow_array;

@@ -37,9 +37,12 @@ has '_database_name'   => ( is => 'ro', isa => 'Str', lazy_build => 1 );
 
 =cut
 
-sub _build__config_settings {
-    my ($self) = @_;
-    return \%{Pathogens::ConfigSettings->new(environment => $self->environment, filename => 'config.yml')->settings()};
+my $config_location = '/software/vertres/bin-external/update_pipeline/config/production';
+
+sub _build__config_settings
+{
+   my ($self) = @_;
+   \%{Pathogens::ConfigSettings->new(environment => $self->environment, filename => $config_location.'/config.yml')->settings()};
 }
 
 =head2 _database_name

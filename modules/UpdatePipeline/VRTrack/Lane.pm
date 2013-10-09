@@ -23,12 +23,11 @@ use VRTrack::Lane;
 use Moose;
 
 has 'name'          => ( is => 'rw', isa => 'Str',  required   => 1 );
-has 'npg_qc_status' => ( is => 'rw', isa => 'Str',  default    => '-' );
-has 'paired'        => ( is => 'rw', isa => 'Bool', default    => 1 );
-has 'raw_reads'     => ( is => 'rw', isa => 'Int',  default    => 0 );
-has 'add_raw_reads' => ( is => 'rw', isa => 'Bool', default    => 0 );
+has 'accession'     => ( is => 'rw', isa => 'Maybe[Str]' );
+has 'storage_path'  => ( is => 'rw', isa => 'Maybe[Str]');
 has '_vrtrack'      => ( is => 'rw',                required   => 1 );
 has '_vr_library'   => ( is => 'rw',                required   => 1 );
+has '_vr_sample'   => ( is => 'rw',                required   => 1 );
 
 has 'vr_lane'       => ( is => 'rw',                lazy_build => 1 );
 
@@ -48,14 +47,14 @@ sub _build_vr_lane
   {
     $vlane->library_id($self->_vr_library->id);
   }
-  
-  my $raw_reads = $self->add_raw_reads ? $self->raw_reads : 0;
-  $vlane->raw_reads($raw_reads) if(not defined($vlane->raw_reads));
-  $vlane->raw_bases(0) if(not defined($vlane->raw_bases));
-  
-  $vlane->npg_qc_status( $self->npg_qc_status );
-  $vlane->is_paired( $self->paired );
   $vlane->hierarchy_name( $self->name );
+  $vlane->acc( $self->accession ) if ( $self->accession );
+  $vlane->storage_path( $self->storage_path ) if ( $self->storage_path );
+  $vlane->raw_reads(0);
+  $vlane->raw_bases(0);
+  $vlane->is_paired(0);
+  $vlane->is_withdrawn(1) if $self->_vr_sample->name() =~ /^change_me/;
+   
   $vlane->update;
   
   return $vlane;

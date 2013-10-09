@@ -33,19 +33,13 @@ sub _build_lane_attributes
   project.name as study_name,
   library.name as library_name,
   library.ssid as library_ssid,
-  lane.raw_reads as total_reads,
   ifnull(individual.acc,'NO_ACC') as sample_accession_number,
   species.name as sample_common_name,
-  lane.npg_qc_status as lane_manual_qc,
-  lane.paired as lane_is_paired_read,
   lane.changed as lane_changed,
   lane.name as lane_name,
   timestampdiff( hour, lane.changed, now() ) as hours_since_lane_changed,
   sample.ssid as sample_ssid,
   project.ssid as study_ssid,
-  lane.processed as lane_processed,
-  library.fragment_size_from as fragment_size_from,
-  library.fragment_size_to as fragment_size_to,
   file.md5 as file_md5
   from latest_lane as lane
   left join latest_file as file on file.lane_id = lane.lane_id

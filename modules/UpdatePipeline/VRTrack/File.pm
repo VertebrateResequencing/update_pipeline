@@ -25,7 +25,7 @@ has 'name'         => ( is => 'rw', isa => 'Str', required   => 1 );
 has 'md5'          => ( is => 'rw', isa => 'Maybe[Str]');
 has '_vrtrack'     => ( is => 'rw',               required   => 1 );
 has '_vr_lane'     => ( is => 'rw',               required   => 1 );
-has 'file_type'    => ( is => 'rw', isa => 'Int', default    => 4 );
+has 'file_type'    => ( is => 'rw', isa => 'Int', default    => 7 );
 has 'override_md5' => ( is => 'ro', isa => 'Bool', default   => 0 );
 
 has 'vr_file'      => ( is => 'rw',               lazy_build => 1 );

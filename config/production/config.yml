@@ -1,4 +1,4 @@
-minimum_passed_hours_before_comparing_new_lanes_to_irods: 48
+minimum_passed_hours_before_comparing_new_lanes_to_irods: 0
 
 #"VRTrack::VRTrack"'s "hierarchy_path_of_lane_name()" method returns the directory 
 #path of a lane by its name. However, the returned path is not a full path. Below we 
@@ -9,4 +9,4 @@ root_path_by_db_name:
     pathogen_helminth_track: /lustre/scratch108/pathogen/pathpipe/helminths/seq-pipelines/
     pathogen_virus_track: /lustre/scratch108/pathogen/pathpipe/viruses/seq-pipelines/
 
-email_eutils: foo_bar@sanger.ac.uk
+email_eutils: jm23@sanger.ac.uk

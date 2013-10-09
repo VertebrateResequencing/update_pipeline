@@ -21,9 +21,12 @@ has 'common_name'          => ( is => 'ro', isa => 'Str', lazy_build => 1 );
 has 'environment'      => ( is => 'ro', isa => 'Str', default => 'production' );
 has '_config_settings' => ( is => 'ro', isa => 'HashRef', lazy_build => 1 );
 
-sub _build__config_settings {
-    my ($self) = @_;
-    return \%{Pathogens::ConfigSettings->new(environment => $self->environment, filename => 'config.yml')->settings()};
+my $config_location = '/software/vertres/bin-external/update_pipeline/config/production';
+
+sub _build__config_settings
+{
+   my ($self) = @_;
+   \%{Pathogens::ConfigSettings->new(environment => $self->environment, filename => $config_location.'/config.yml')->settings()};
 }
 
 sub _build_common_name

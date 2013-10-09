@@ -11,13 +11,17 @@ use Moose;
 has '_files_metadata'           => ( is => 'rw', isa => 'ArrayRef', lazy_build => 1 );
 has '_lanes_metadata'           => ( is => 'rw', isa => 'HashRef',  lazy_build => 1 );
 has 'number_of_files_to_return' => ( is => 'rw', isa => 'Maybe[Int]');
-has 'study_names'               => ( is => 'rw', isa => 'ArrayRef', required   => 1 );
+has 'study_ids'                 => ( is => 'rw', isa => 'ArrayRef', required   => 1 );
+has 'irods_file_type'           => ( is => 'rw', isa => 'Maybe[Str]');
+has 'gs_file_path'              => ( is => 'rw', isa => 'Maybe[Str]');
 
 sub _build__files_metadata
 {
   my ($self) = @_;
   my $irods_files_metadata = UpdatePipeline::IRODS->new(
-    study_names               => $self->study_names,
+    study_ids                 => $self->study_ids,
+    irods_file_type           => $self->irods_file_type,
+    gs_file_path              => $self->gs_file_path,
     number_of_files_to_return => $self->number_of_files_to_return,
     _warehouse_dbh            => $self->_warehouse_dbh
     )->files_metadata();

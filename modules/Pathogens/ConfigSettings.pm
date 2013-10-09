@@ -15,15 +15,14 @@ use Moose;
 use File::Slurp;
 use YAML::XS;
 
-has 'environment' => (is => 'rw', isa => 'Str', default => 'test');
-has 'filename' => ( is => 'rw', isa => 'Str', default => 'config.yml' );
+has 'environment' => (is => 'rw', isa => 'Str', default => 'production');
+has 'filename' => ( is => 'rw', isa => 'Str', default => 'database.yml' );
 has 'settings' => ( is => 'rw', isa => 'HashRef', lazy_build => 1 );
-
 
 sub _build_settings 
 {
   my $self = shift;
-  my %config_settings = %{ Load( scalar read_file("config/".$self->environment."/".$self->filename.""))};
+  my %config_settings = %{ Load( scalar read_file($self->filename.""))};
   return \%config_settings;
 } 
 

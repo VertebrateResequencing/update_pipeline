@@ -20,14 +20,14 @@ use Moose;
 use UpdatePipeline::Exceptions;
 use Data::Dumper;
 
-
-has '_exceptions'               => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
-has '_unknown_common_names'     => ( is => 'ro', isa => 'HashRef',  default => sub { {} });
-has '_undefined_common_names'   => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
-has '_inconsistent_total_reads' => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
-has '_bad_irods_records'        => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
-has '_path_changed_to_lanes'    => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
-has '_unclassified_exceptions'  => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
+has '_exceptions'                  => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
+has '_unknown_common_names'        => ( is => 'ro', isa => 'HashRef',  default => sub { {} });
+has '_undefined_common_names'      => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
+has '_inconsistent_total_reads'    => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
+has '_bad_irods_records'           => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
+has '_path_changed_to_lanes'       => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
+has '_unclassified_exceptions'     => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
+has '_incorrect_irods_permissions' => ( is => 'ro', isa => 'ArrayRef', default => sub { [] });
 
 has 'print_unclassified'        => ( is => 'rw', isa => 'Bool', default => 1);
 
@@ -65,7 +65,10 @@ sub print_report
   {
     print "Lanes reimported\t$filename\n";
   }
-  
+  for my $filename (sort @{$self->_incorrect_irods_permissions})
+  {
+    print "iRODS permissions error:\t$filename\n";
+  } 
   if(@{$self->_unclassified_exceptions} > 0)
   {
     print "Unclassified exceptions\t".@{$self->_unclassified_exceptions}."\n";
@@ -104,6 +107,10 @@ sub _build_report
      {
        $self->_path_changed_to_lane($exception);
      }
+     elsif($exception->isa("UpdatePipeline::Exceptions::NoPermissionOnIrodsFile"))
+     {
+       $self->_incorrect_irods_permission($exception);
+     }
      else
      {
        # dont do anything with these exceptions other than count them
@@ -136,6 +143,12 @@ sub _bad_irods_record
    my($self,$exception) = @_;
    my $error_message = $exception->description.' '.$exception->error;
    push(@{$self->_bad_irods_records}, $error_message);
+}
+
+sub _incorrect_irods_permission
+{
+   my($self,$exception) = @_;
+   push(@{$self->_incorrect_irods_permissions}, $exception->error);
 }
 
 sub _total_read_inconsistency

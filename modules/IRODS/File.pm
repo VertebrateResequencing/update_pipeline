@@ -17,9 +17,12 @@ package IRODS::File;
 use Moose;
 use File::Spec;
 use File::Basename;
+use DateTime::Format::Strptime;
 extends 'IRODS::Common';
 
 has 'file_location'                 => ( is => 'rw', isa => 'Str',  required   => 1 );
+has 'file_type'                     => ( is => 'rw', isa => 'Maybe[Str]');
+has 'data_file_locations'           => ( is => 'ro', isa => 'HashRef', required => 1 );
 
 has 'file_attributes'               => ( is => 'rw', isa => 'HashRef', lazy_build => 1 );
 has 'file_name'                     => ( is => 'rw', isa => 'Str', lazy_build => 1 );
@@ -30,20 +33,70 @@ sub _build_file_attributes
    my ($self) = @_;
    my %file_attributes;
    my $irods_stream = $self->_stream_location() ;
+   my $parser= DateTime::Format::Strptime->new( pattern => '%Y-%m-%dT%H:%M:%S' );
+   my %data_file_locations = %{ $self->data_file_locations };
    $file_attributes{file_name}  = $self->file_name();
    $file_attributes{file_name_without_extension} = $self->_file_name_without_extension($self->file_name());
 
    open( my $irods, $irods_stream ) or return  \%file_attributes;
    
    my $attribute = '';
+   my @identifiers;
    while (<$irods>) {
-       if (/^attribute: (.+)$/) { $attribute                    = $1; }
-       if (/^value: (.+)$/)     { $file_attributes{$attribute} = $1; }
+       if (/^attribute: (.+)$/) { 
+		   if ( /dcterms:identifier/ ) {
+			   $attribute = '';
+		   }
+		   else {
+			   $attribute                    = $1; 
+		   }
+	   }
+       if (/^value: (.+)$/) {
+		   my $value = $1;
+		   if ( $attribute ) { 
+			   if ( $attribute =~ m/analysis_uuid/ ) {
+				   if ( $file_attributes{$attribute} ) {
+				   		my $dt1 = $parser->parse_datetime(${ $data_file_locations{$file_attributes{$attribute}} }[1]);
+				   		my $dt2 = $parser->parse_datetime(${ $data_file_locations{$value} }[1]);
+				   		next unless defined $dt2;
+				   		if ( defined $dt1 ) {
+							my $cmp = DateTime->compare($dt1, $dt2);
+							$file_attributes{$attribute} = $value if defined $cmp && $cmp == 1;
+						}
+						else {
+							$file_attributes{$attribute} = $value;
+						}
+				   }
+				   else {
+					   $file_attributes{$attribute} = $value;
+				   }
+			   }
+			   else {
+				   $file_attributes{$attribute} = $value; 
+			   }
+		   }
+		   else {
+			   push @identifiers, $value;
+		   }
+	   }
    }
    close $irods;
    
-   $self->_convert_manual_qc_values(\%file_attributes);
-   
+   if ( defined ($file_attributes{sample}) ) {
+	   if ( $self->file_type eq 'gtc' ) {
+	       foreach ( @identifiers ) {
+		       next if $_ eq $file_attributes{sample};
+		       $file_attributes{long_sample} = $_ if $_ =~ m/$file_attributes{sample}/;
+		   }
+	   }
+	   else {
+		   my $long_sample = $file_attributes{sample};
+		   $long_sample = $long_sample."_$file_attributes{beadchip}" if defined $file_attributes{beadchip};
+		   $long_sample = $long_sample."_$file_attributes{beadchip_section}" if defined $file_attributes{beadchip_section};
+		   $file_attributes{long_sample} = $long_sample;
+	   }
+   }		   
+	   
    if (! defined($file_attributes{md5})) {
        $file_attributes{md5} = $self->_get_md5_from_icat;
    }
@@ -63,33 +116,10 @@ sub _build_file_name
 sub _file_name_without_extension
 {
    my ($self) = @_; 
-   my($filename, $directories, $suffix) = fileparse($self->file_name, qr/\.[^.]*/);
-   $filename =~ s!_nonhuman!!;
+   my ($filename) = fileparse($self->file_name,'\..*'); 
    return $filename;
 }
 
-
-
-sub _convert_manual_qc_values
-{
-  my ($self,$file_attributes) = @_;
-  if(! defined($file_attributes->{manual_qc}))
-  {
-    $file_attributes->{manual_qc} = 'pending';
-  }
-  elsif($file_attributes->{manual_qc} == 0)
-  {
-     $file_attributes->{manual_qc} = 'fail';
-  }
-  elsif($file_attributes->{manual_qc} == 1)
-  {
-     $file_attributes->{manual_qc} = 'pass';
-  }
-  else
-  {
-     $file_attributes->{manual_qc} = '-';
-  }
-}
 
 
 sub _stream_location

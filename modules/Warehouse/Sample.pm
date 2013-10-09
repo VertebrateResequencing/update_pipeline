@@ -31,7 +31,8 @@ sub populate
 sub post_populate
 {
   my($self) = @_;
-  $self->_populate_supplier_name;
+  #$self->_populate_supplier_name;
+  $self->_populate_supplier_public_name;
   1;
 }
 
@@ -73,18 +74,39 @@ sub _populate_name_from_ssid
   }
 }
 
-sub _populate_supplier_name
+
+#~ sub _populate_supplier_name
+#~ {
+  #~ my($self) = @_;
+  #~ return unless defined($self->file_meta_data->sample_ssid) ;
+  #~ my $sample_ssid = $self->file_meta_data->sample_ssid;
+  #~ my $sql = qq[select supplier_name, cohort, control from current_samples where internal_id = $sample_ssid limit 1;];
+  #~ my $sth = $self->_dbh->prepare($sql);
+  #~ $sth->execute;
+  #~ my @sample_warehouse_details  = $sth->fetchrow_array;
+  #~ if(@sample_warehouse_details > 0)
+  #~ {
+    #~ $self->file_meta_data->supplier_name($sample_warehouse_details[0]) if( defined $sample_warehouse_details[0] );
+    #~ $self->file_meta_data->cohort_name($sample_warehouse_details[1]) if( defined $sample_warehouse_details[1] );
+    #~ $self->file_meta_data->control($sample_warehouse_details[2]) if( defined $sample_warehouse_details[2] );
+  #~ }
+#~ }
+
+sub _populate_supplier_public_name
 {
   my($self) = @_;
-  return unless defined($self->file_meta_data->sample_name) ;
-  my $sample_name = $self->file_meta_data->sample_name;
-  my $sql = qq[select supplier_name from current_samples where name = "$sample_name" limit 1;];
+  return unless defined($self->file_meta_data->sample_ssid) ;
+  my $sample_ssid = $self->file_meta_data->sample_ssid;
+  my $sql = qq[select supplier_name, cohort, control, ifnull(public_name, 'change_me') from current_samples where internal_id = $sample_ssid limit 1;];
   my $sth = $self->_dbh->prepare($sql);
   $sth->execute;
   my @sample_warehouse_details  = $sth->fetchrow_array;
   if(@sample_warehouse_details > 0)
   {
     $self->file_meta_data->supplier_name($sample_warehouse_details[0]) if( defined $sample_warehouse_details[0] );
+    $self->file_meta_data->cohort_name($sample_warehouse_details[1]) if( defined $sample_warehouse_details[1] );
+    $self->file_meta_data->control($sample_warehouse_details[2]) if( defined $sample_warehouse_details[2] );
+    $self->file_meta_data->public_name($sample_warehouse_details[3]) if( defined $sample_warehouse_details[3] );
   }
 }
 

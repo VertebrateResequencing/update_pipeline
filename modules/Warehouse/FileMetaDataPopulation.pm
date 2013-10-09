@@ -16,12 +16,12 @@ $file->populate();
 
 package Warehouse::FileMetaDataPopulation;
 use Moose;
-use Warehouse::Library;
+#use Warehouse::Library;
 use Warehouse::Study;
 use Warehouse::Sample;
-use Warehouse::NPGInformation;
-use Warehouse::NPGPlexInformation;
-use Warehouse::Request;
+#use Warehouse::NPGInformation;
+#use Warehouse::NPGPlexInformation;
+#use Warehouse::Request;
 
 has 'file_meta_data'   => ( is => 'rw', isa => 'UpdatePipeline::FileMetaData', required => 1 );
 has '_dbh'             => ( is => 'rw',                                        required => 1 );
@@ -31,14 +31,14 @@ sub populate
 {
   my($self) = @_;
   # do this check twice because its more likely to be correct than the NPG table.
-  Warehouse::Library->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
+  #Warehouse::Library->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
   Warehouse::Study->new(  file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
   Warehouse::Sample->new( file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
   
-  Warehouse::NPGInformation->new(    file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
-  Warehouse::NPGPlexInformation->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
+  #Warehouse::NPGInformation->new(    file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
+  #Warehouse::NPGPlexInformation->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
 
-  Warehouse::Library->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
+  #Warehouse::Library->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
   Warehouse::Study->new(  file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
   Warehouse::Sample->new( file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->populate();
 }
@@ -52,12 +52,12 @@ sub post_populate
   # Get supplier name for sample
   Warehouse::Sample->new( file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->post_populate();
   # Get requested size for a non multiplexed library
-  Warehouse::Library->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->post_populate();
+  #Warehouse::Library->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->post_populate();
   # Get requested size for a multiplexed library
-  Warehouse::Request->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->post_populate();
+  #Warehouse::Request->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->post_populate();
   # get the median insert size (if NPG have aligned it)
-  Warehouse::NPGPlexInformation->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->post_populate();
-  Warehouse::NPGInformation->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->post_populate();
+  #Warehouse::NPGPlexInformation->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->post_populate();
+  #Warehouse::NPGInformation->new(file_meta_data => $self->file_meta_data,_dbh => $self->_dbh)->post_populate();
 }
 
 __PACKAGE__->meta->make_immutable;
