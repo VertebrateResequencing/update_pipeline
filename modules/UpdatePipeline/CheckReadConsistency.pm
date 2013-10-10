@@ -37,7 +37,7 @@ has '_database_name'   => ( is => 'ro', isa => 'Str', lazy_build => 1 );
 
 =cut
 
-my $config_location = '/software/vertres/bin-external/update_pipeline/config/production';
+my $config_location = '/software/vertres/update_pipeline_hipsci/config/production';
 
 sub _build__config_settings
 {

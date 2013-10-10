@@ -21,7 +21,7 @@ has 'common_name'          => ( is => 'ro', isa => 'Str', lazy_build => 1 );
 has 'environment'      => ( is => 'ro', isa => 'Str', default => 'production' );
 has '_config_settings' => ( is => 'ro', isa => 'HashRef', lazy_build => 1 );
 
-my $config_location = '/software/vertres/bin-external/update_pipeline/config/production';
+my $config_location = '/software/vertres/update_pipeline_hipsci/config/production';
 
 sub _build__config_settings
 {
