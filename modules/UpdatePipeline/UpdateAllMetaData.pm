@@ -50,7 +50,7 @@ has 'gs_file_path'          => ( is => 'ro',                             isa => 
 has 'vrtrack_lanes'         => ( is => 'ro',                             isa => 'Maybe[HashRef]' );
 has 'study_ids_names'       => ( is => 'ro',                             isa => 'HashRef' );
 
-my $config_location = '/software/vertres/bin-external/update_pipeline/config/production';
+my $config_location = '/software/vertres/update_pipeline_hipsci/config/production';
 sub _build__config_settings
 {
    my ($self) = @_;
