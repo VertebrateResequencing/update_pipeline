@@ -51,7 +51,7 @@ sub _build_vr_sample
   
   #check_if_sample_name_exists
   my $project_id = $self->_vr_project->id();
-  if (VRTrack::Sample->is_name_in_database($self->_vrtrack, $sample_name, $self->supplier_name, $project_id)) {
+  if ($sample_name =~ /^change_me/ && VRTrack::Sample->is_name_in_database($self->_vrtrack, $sample_name, $self->supplier_name, $project_id)) {
 	  my @letters = ('a'..'z');
 	  my $letter = $letters[ int rand scalar @letters ];
 	  $sample_name = $sample_name . "_$letter";
@@ -60,12 +60,14 @@ sub _build_vr_sample
       
   unless(defined($vsample))
   {
-	  $vsample = $self->_vr_project->add_sample($sample_name);
+    $vsample = VRTrack::Sample->new_by_name_project( $self->_vrtrack, $sample_name, $project_id );
+	$vsample = $self->_vr_project->add_sample($sample_name) unless $vsample;
   }
   UpdatePipeline::Exceptions::CouldntCreateSample->throw( error => "Couldnt create sample with name ".$sample_name."\n" ) if(not defined($vsample));
   
   # an individual links a sample to a species
   my $individual_name = $self->cohort_name;
+  UpdatePipeline::Exceptions::CouldntCreateSample->throw( error => "Couldn't create individual for sample $sample_name because cohort_name was not defined\n" ) unless $individual_name;
   my $vr_individual = VRTrack::Individual->new_by_name( $self->_vrtrack, $individual_name );
   if ( not defined $vr_individual ) {
 	  $vr_individual = VRTrack::Individual->new_by_hierarchy_name( $self->_vrtrack, $individual_name );
