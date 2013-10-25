@@ -112,8 +112,8 @@ sub _build_files_metadata
   my @sorted_files_metadata = reverse((sort (sort_by_file_name @files_metadata)));
   $self->_limit_returned_results(\@sorted_files_metadata);
   
-  $self->_check_gs_file_download(\%gs_files) if ( $self->gs_file_path );#&& $self->irods_file_type eq 'gtc' );
-    
+  $self->_check_gs_file_download(\%gs_files) if ( $self->gs_file_path );
+  
   return \@sorted_files_metadata;
 }
 
@@ -201,7 +201,7 @@ sub _check_gs_file_download
 	for my $file ( keys %geno_files ) {
 		my @irods_files = $self->_fetch_download_file_names($file);
 		for my $dl_file ( @irods_files ) {
-			#print "DL: $dl_file\n";
+            #print "DL: $dl_file\n";
 			my $basename = $geno_files{$file}.$divider.basename($dl_file);
 			#print "BN: $basename\n";
 			my $download = File::Spec->catpath( '', $self->gs_file_path, $basename );		
@@ -209,7 +209,11 @@ sub _check_gs_file_download
 			my $download_dir = (fileparse($download))[1];
 			#print "DD: $download_dir\n";
 			system "mkdir $download_dir" unless -e $download_dir;
-			system ("iget $dl_file $download && chmod 770 $download") unless -f $download;
+            
+            unless (-f $download) {
+			    system ('iget', $dl_file, $download);
+                system ('chmod', 770, $download);
+            }
 		}
 	}
 } 
