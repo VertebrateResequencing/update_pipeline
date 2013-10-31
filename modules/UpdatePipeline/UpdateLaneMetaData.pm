@@ -21,6 +21,38 @@ has 'file_meta_data'       => ( is => 'ro', isa => 'UpdatePipeline::FileMetaData
 
 has 'common_name_required'  => ( is => 'ro', isa => 'Bool', default => 1);
 
+my %asciify = (
+   chr(0x00A0) => ' ',
+   chr(0x00AD) => ' ',
+   chr(0x0091) => "'",
+   chr(0x0092) => "'",
+   chr(0x0093) => '"',
+   chr(0x0094) => '"',
+   chr(0x0096) => '-',
+   chr(0x0097) => '-',
+   chr(0x0098) => '~',
+   chr(0x00AB) => '"',
+   chr(0x00BB) => '"',
+   chr(0x00A9) => '(C)',
+   chr(0x00AE) => '(R)',
+   chr(0x2010) => '-',
+   chr(0x2011) => '-',
+   chr(0x2012) => '-',
+   chr(0x2013) => '-',
+   chr(0x2014) => '-',
+   chr(0x2015) => '-',
+   chr(0x2018) => "'",
+   chr(0x2019) => "'",
+   chr(0x201C) => '"',
+   chr(0x201D) => '"',
+   chr(0x2022) => '*',
+   chr(0x2026) => '...',
+   chr(0x2122) => 'TM',
+);
+
+my $utf8_punctuation_pat = join '', map quotemeta, keys %asciify;
+my $utf8_punctuation_re = qr/[$utf8_punctuation_pat]/;
+
 sub update_required
 {
   my($self) = @_;
@@ -40,7 +72,6 @@ sub _differences_between_file_and_lane_meta_data
   UpdatePipeline::Exceptions::UndefinedStudySSID->throw( error => $self->file_meta_data->file_name) if(not defined($self->file_meta_data->study_ssid));
   UpdatePipeline::Exceptions::UndefinedLibraryName->throw( error => $self->file_meta_data->file_name) if(not defined($self->file_meta_data->library_name));
   
-
   return 1 unless(defined $self->lane_meta_data);
 
   my @required_keys = ("sample_name", "study_name","library_name", "sample_accession_number","study_accession_number", "sample_common_name");
@@ -61,7 +92,14 @@ sub _differences_between_file_and_lane_meta_data
     }
   }
 
-  my @fields_to_check_file_defined_and_not_equal =  $self->common_name_required ? ("study_name", "library_name","sample_common_name", "study_accession_number","sample_accession_number","library_ssid", "study_ssid","sample_ssid") : ("study_name", "library_name", "study_accession_number","sample_accession_number","library_ssid","study_ssid","sample_ssid");
+  # warehouse sample name eq sanger_sample_id
+  # warehouse sample accession_number can be NULL
+  # UpdatePipeline/IRODS.pm sets sample_accession_number to same as sample_name == warehouse sample name/sanger_sample_id
+  # UpdatePipeline/VRTrack/LaneMetaData.pm sets sample_accession_number as individual.acc ('NO_ACC' if that is NULL)
+  # vrtrack sample name eq warehouse public_name
+  # vrtrack sample ssid eq warehouse internal_id
+
+  my @fields_to_check_file_defined_and_not_equal =  $self->common_name_required ? ("study_name", "library_name","sample_common_name", "study_accession_number","library_ssid", "study_ssid","sample_ssid") : ("study_name", "library_name", "study_accession_number","library_ssid","study_ssid","sample_ssid");
   for my $field_name (@fields_to_check_file_defined_and_not_equal)
   {
     if( $self->_file_defined_and_not_equal($self->file_meta_data->$field_name, $self->lane_meta_data->{$field_name}) )
@@ -70,12 +108,11 @@ sub _differences_between_file_and_lane_meta_data
     }
   }
   
-  if( $self->_file_defined_and_not_equal($self->_normalise_sample_name($self->file_meta_data->sample_name), $self->_normalise_sample_name($self->lane_meta_data->{sample_name})))
+  if( $self->_file_defined_and_not_equal($self->_normalise_sample_name($self->file_meta_data->public_name), $self->_normalise_sample_name($self->lane_meta_data->{sample_name})))
   {
     return 1;
   }
   
-
   return 0; 
 }
 
@@ -83,12 +120,27 @@ sub _file_defined_and_not_equal
 {
   my ($self, $file_meta_data, $lane_metadata) = @_;
   return 1 if(defined($file_meta_data) && ! defined($lane_metadata));
-  (defined($file_meta_data) && $file_meta_data ne $lane_metadata) ? 1 : 0;
+  (defined($file_meta_data) && $self->_normalise_string($file_meta_data) ne $self->_normalise_string($lane_metadata)) ? 1 : 0;
+}
+
+sub _normalise_string {
+    my ($self, $s) = @_;
+    
+    # utf8 to ascii
+    $s =~ s/($utf8_punctuation_re)/$asciify{$1}/g;
+    
+    # strip leading 0s on numbers
+    if ($s =~ /^0[\d\.]+$/) {
+        $s =~ s/^0+//;
+    }
+    
+    return $s;
 }
 
 sub _normalise_sample_name
 {
   my ($self, $sample_name) = @_;
+  $sample_name || return;
   $sample_name =~ s/\W/_/g;
   return $sample_name;
 }

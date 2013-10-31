@@ -57,13 +57,19 @@ sub _build_vr_sample
 	  $sample_name = $sample_name . "_$letter";
   }
   my $vsample = VRTrack::Sample->new_by_ssid( $self->_vrtrack, $self->external_id );
-      
+  
   unless(defined($vsample))
   {
     $vsample = VRTrack::Sample->new_by_name_project( $self->_vrtrack, $sample_name, $project_id );
 	$vsample = $self->_vr_project->add_sample($sample_name) unless $vsample;
   }
   UpdatePipeline::Exceptions::CouldntCreateSample->throw( error => "Couldnt create sample with name ".$sample_name."\n" ) if(not defined($vsample));
+  
+  # update sample name if it changed (all other metadata should get updated
+  # later)
+  if ($sample_name !~ /^change_me/ && $sample_name ne $vsample->name) {
+    $vsample->name($sample_name);
+  }
   
   # an individual links a sample to a species
   my $individual_name = $self->cohort_name;

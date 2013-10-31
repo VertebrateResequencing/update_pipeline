@@ -49,6 +49,7 @@ has 'species_name'          => ( is => 'ro',                             isa => 
 has 'gs_file_path'          => ( is => 'ro',                             isa => 'Maybe[Str]' );
 has 'vrtrack_lanes'         => ( is => 'ro',                             isa => 'Maybe[HashRef]' );
 has 'study_ids_names'       => ( is => 'ro',                             isa => 'HashRef' );
+has '_warehouse_sample_details' => ( is => 'rw', lazy_build => 1,   isa => 'HashRef' );
 
 my $config_location = '/software/vertres/update_pipeline_hipsci/config/production';
 sub _build__config_settings
@@ -76,36 +77,51 @@ sub _build__exception_handler
   UpdatePipeline::ExceptionHandler->new( _vrtrack => $self->_vrtrack, minimum_run_id => $self->minimum_run_id, update_if_changed => $self->update_if_changed );
 }
 
+sub _build__warehouse_sample_details {
+    my $self = shift;
+    my $dbh = $self->_warehouse_dbh;
+    
+    # we just get the whole table because current_samples has no key to study
+    # table, and the study_samples table has no indexes on study_internal_id
+    my $sql = qq[select internal_id, supplier_name, donor_id, control, public_name from current_samples;];
+    
+    return $dbh->selectall_hashref($sql, 'internal_id');
+}
 
 sub update
 {
   my ($self) = @_;
-
+  
   for my $file_metadata (@{$self->_files_metadata}) {
+    $self->_post_populate_file_metadata($file_metadata) unless $self->dont_use_warehouse;
+    
     if ($self->taxon_id && defined $self->species_name) {
     	$file_metadata->sample_common_name($self->species_name);
     }
+    
     eval {
-      if(UpdatePipeline::UpdateLaneMetaData->new(
+      if (UpdatePipeline::UpdateLaneMetaData->new(
           lane_meta_data => $self->_lanes_metadata->{$file_metadata->file_name_without_extension},
           file_meta_data => $file_metadata,
           common_name_required => $self->common_name_required,
           )->update_required
         )
       {
-          $self->_post_populate_file_metadata($file_metadata) unless($self->dont_use_warehouse);
           $self->_update_lane($file_metadata);
       }
     };
-    if(my $exception = Exception::Class->caught())
+    
+    if (my $exception = Exception::Class->caught())
     {
       $self->_exception_handler->add_exception($exception,$file_metadata->file_name_without_extension);
     }
-    if ( $self->vrtrack_lanes && $self->vrtrack_lanes->{$file_metadata->file_name_without_extension} ) {
+    
+    if ($self->vrtrack_lanes && $self->vrtrack_lanes->{$file_metadata->file_name_without_extension} ) {
 		delete $self->vrtrack_lanes->{$file_metadata->file_name_without_extension};
 	}	
   }
-  if ( $self->vrtrack_lanes && keys %{$self->vrtrack_lanes} > 0 && scalar @{$self->_files_metadata} > 0 && $self->_check_irods_is_up ) {
+  
+  if ($self->vrtrack_lanes && keys %{$self->vrtrack_lanes} > 0 && scalar @{$self->_files_metadata} > 0 && $self->_check_irods_is_up ) {
 	  $self->_withdraw_lanes;
   }
   $self->_exception_handler->print_report($self->verbose_output);
@@ -124,6 +140,8 @@ sub _update_lane
       $vproject->update;
     }
     
+    #*** if the sample already exists by ssid in VRTrack, name does not get
+    # changed if it is different! And would VRPipe notice sample name changes?
     my $vr_sample = UpdatePipeline::VRTrack::Sample->new(
       common_name_required => $self->common_name_required,
       name => $file_metadata->public_name,  
@@ -167,10 +185,15 @@ sub _update_lane
   }
 }
 
-sub _post_populate_file_metadata
-{
-  my ($self, $file_metadata) = @_;
-  Warehouse::FileMetaDataPopulation->new(file_meta_data => $file_metadata, _dbh => $self->_warehouse_dbh)->post_populate();
+sub _post_populate_file_metadata {
+    my ($self, $file_metadata) = @_;
+    
+    my $warehouse_sample_details = $self->_warehouse_sample_details->{$file_metadata->sample_ssid} || return;
+    
+    $file_metadata->supplier_name($warehouse_sample_details->{supplier_name}) if defined $warehouse_sample_details->{supplier_name};
+    $file_metadata->cohort_name($warehouse_sample_details->{donor_id}) if defined $warehouse_sample_details->{donor_id}; # donor_id used to be called 'cohort'
+    $file_metadata->control($warehouse_sample_details->{control}) if defined $warehouse_sample_details->{control};
+    $file_metadata->public_name($warehouse_sample_details->{public_name} || 'change_me');
 }
 
 sub _withdraw_lanes
