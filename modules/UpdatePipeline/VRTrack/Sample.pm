@@ -74,28 +74,20 @@ sub _build_vr_sample
   # an individual links a sample to a species
   my $individual_name = $self->cohort_name;
   UpdatePipeline::Exceptions::CouldntCreateSample->throw( error => "Couldn't create individual for sample $sample_name because cohort_name was not defined\n" ) unless $individual_name;
-  my $vr_individual = VRTrack::Individual->new_by_name( $self->_vrtrack, $individual_name );
-  if ( not defined $vr_individual ) {
-	  $vr_individual = VRTrack::Individual->new_by_hierarchy_name( $self->_vrtrack, $individual_name );
-  }  
-  if ( not defined $vr_individual ) {
-    my $vr_individual_hierarchy_name = VRTrack::Individual->new_by_hierarchy_name( $self->_vrtrack, $vsample->hierarchy_name);
-    if(defined $vr_individual_hierarchy_name )
-    {
-      $vr_individual = $vsample->add_individual($self->name.'_'.int(rand(100000)));
-      $vr_individual->name($self->name);
-      $vr_individual->update();
-    }
-    else
-    {
-      $vr_individual = $vsample->add_individual($individual_name);
-    }
+  my $vr_individual = VRTrack::Individual->new_by_name($self->_vrtrack, $individual_name);
+  unless ($vr_individual) {
+      $vr_individual = VRTrack::Individual->new_by_hierarchy_name($self->_vrtrack, $individual_name);
+      unless ($vr_individual) {
+        $vr_individual = $vsample->add_individual($individual_name);
+      }
   }
-  elsif(not defined ($vsample->individual) ||  (defined ($vsample->individual) && $vr_individual->id() != $vsample->individual_id() ))  
-  {
+  if (not defined $vsample->individual || $vr_individual->id != $vsample->individual_id) {
     $vsample->individual_id($vr_individual->id);
   }
+  $self->_populate_individual($vr_individual);
+  
   $vsample->hierarchy_name($self->supplier_name);
+  
   $vsample->ssid($self->external_id);
   if( defined($self->control)) 
   {
@@ -103,8 +95,6 @@ sub _build_vr_sample
   }  
   $vsample->update;
   
-  $self->_populate_individual($vr_individual);
-
   return $vsample;
 }
 
