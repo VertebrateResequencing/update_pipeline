@@ -81,7 +81,8 @@ sub _build_vr_sample
         $vr_individual = $vsample->add_individual($individual_name);
       }
   }
-  if (not defined $vsample->individual || $vr_individual->id != $vsample->individual_id) {
+  my $current_individual_id = defined $vsample->individual ? $vsample->individual_id : 0;
+  if ($current_individual_id != $vr_individual->id) {
     $vsample->individual_id($vr_individual->id);
   }
   $self->_populate_individual($vr_individual);
