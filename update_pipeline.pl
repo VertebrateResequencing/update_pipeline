@@ -98,6 +98,14 @@ if ($@) {
 my $vrtrack = VertRes::Utils::VRTrackFactory->instantiate(database => $db,mode     => 'rw');
 unless ($vrtrack) { die "Can't connect to tracking database: $db \n";}
 
+if ($withdraw_del) {
+    foreach my $study (keys %$study_ids_names) {
+        foreach my $lane ( $vrtrack->get_lanes(project => [$study]) ) {
+            $vrtrack_lanes->{ $lane->name } = $lane->id;
+        }
+    }
+}
+
 my $update_pipeline = UpdatePipeline::UpdateAllMetaData->new(
     study_ids                 => $study_ids, 
     study_ids_names           => $study_ids_names, 
