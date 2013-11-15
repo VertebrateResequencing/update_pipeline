@@ -35,6 +35,7 @@ GetOptions(
     'w|dont_use_warehouse'      => \$dont_use_warehouse,
     'f|file_type=s'             => \$file_type,
     'tax|taxon_id=i'            => \$taxon_id,
+    'spe|species=s'             => \$species_name,
     'md5|override_md5'          => \$override_md5,
     'wdr|withdraw_del'          => \$withdraw_del,
     'gsf|gs_file_path=s'        => \$gs_file_path,
@@ -53,6 +54,7 @@ Usage: $0
   -w|--dont_use_warehouse      <dont use the warehouse to fill in missing data>
   -f|--file_type               <optionally provide a file type for updating, e.g. gtc, idat....>
   -tax|--taxon_id              <optionally provide taxon id to overwrite species info in bam file common name>
+  -spe|--species               <optionally provide the species name, which in combination with -tax avoids an NCBI lookup>
   -md5|--override_md5          <optionally update md5 on imported file if the iRODS md5 changes>
   -wdr|--withdraw_del          <optionally withdraw a lane if has been deleted from iRODS>
   -gsf|--gs_file_path          <optionally specify path to download genome studio genotype or expression files>
@@ -85,14 +87,16 @@ if(defined($lock_file))
 my $study_ids = UpdatePipeline::Studies->new(filename => $studyfile)->study_ids;
 my $study_ids_names = UpdatePipeline::Studies->new(filename => $studyfile)->study_ids_names;
 
-eval{
-  $species_name = $taxon_id ? NCBI::SimpleLookup->new( taxon_id => $taxon_id )->common_name : undef;
-};
-if ($@) {  
-  eval {
-	$species_name = $taxon_id ? NCBI::TaxonLookup->new( taxon_id => $taxon_id )->common_name : undef;
+unless ($species_name) {
+  eval{
+    $species_name = $taxon_id ? NCBI::SimpleLookup->new( taxon_id => $taxon_id )->common_name : undef;
   };
-  $species_name = 'Homo sapiens' if ($@);	
+  if ($@) {  
+    eval {
+	  $species_name = $taxon_id ? NCBI::TaxonLookup->new( taxon_id => $taxon_id )->common_name : undef;
+    };
+    $species_name = 'Homo sapiens' if ($@);	
+  }
 }
 
 my $vrtrack = VertRes::Utils::VRTrackFactory->instantiate(database => $db,mode     => 'rw');
