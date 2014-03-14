@@ -84,10 +84,7 @@ sub _build_file_attributes
    
    if ( defined ($file_attributes{sample}) ) {
 	   if ( $self->file_type eq 'gtc' ) {
-	       foreach ( @identifiers ) {
-		       next if $_ eq $file_attributes{sample};
-		       $file_attributes{long_sample} = $_ if $_ =~ m/$file_attributes{sample}/;
-		   }
+           $file_attributes{long_sample} = $file_attributes{infinium_sample};
 	   }
 	   else {
 		   my $long_sample = $file_attributes{sample};
