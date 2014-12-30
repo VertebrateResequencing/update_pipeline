@@ -22,7 +22,6 @@ has '_vrtrack'     => ( is => 'rw',               required   => 1 );
 has '_vr_lane'     => ( is => 'rw',               required   => 1 );
 has 'file_type'    => ( is => 'rw', isa => 'Int', default    => 4 );
 has 'override_md5' => ( is => 'ro', isa => 'Bool', default   => 0 );
-has 'reference'    => ( is => 'ro', isa => 'Maybe[Str]' );
 
 has 'vr_file'      => ( is => 'rw',               lazy_build => 1 );
 
@@ -66,11 +65,6 @@ sub _build_vr_file
     {
        $vfile->md5($self->md5);
     }
-  }
-  
-  if(defined($self->reference))
-  {
-    $vfile->reference($self->reference);
   }
   
   $vfile->type($self->file_type);
