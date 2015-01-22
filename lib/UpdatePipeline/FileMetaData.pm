@@ -13,6 +13,8 @@ use UpdatePipeline::Exceptions;
                                 
 has 'study_name'                       => ( is => 'rw', isa => 'Maybe[Str]');
 has 'study_accession_number'           => ( is => 'rw', isa => 'Maybe[Str]');
+has 'cohort_name'                      => ( is => 'rw', isa => 'Maybe[Str]');
+has 'control'                          => ( is => 'rw', isa => 'Maybe[Int]');
 has 'file_md5'                         => ( is => 'rw', isa => 'Maybe[Str]');
 has 'file_type'                        => ( is => 'rw', isa => 'Str',         default    => 'bam' );
 has 'file_name'                        => ( is => 'rw', isa => 'Str',         required   => 1 );
