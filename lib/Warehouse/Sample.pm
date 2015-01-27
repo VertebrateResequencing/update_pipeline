@@ -74,7 +74,7 @@ sub _populate_supplier_public_name
   my($self) = @_;
   return unless defined($self->file_meta_data->sample_ssid) ;
   my $sample_ssid = $self->file_meta_data->sample_ssid;
-  my $sql = qq[select supplier_name, donor_id, control, ifnull(public_name, 'change_me') from current_samples where internal_id = $sample_ssid limit 1;];
+  my $sql = qq[select supplier_name, donor_id, control, public_name from current_samples where internal_id = $sample_ssid limit 1;];
   my $sth = $self->_dbh->prepare($sql);
   $sth->execute;
   my @sample_warehouse_details  = $sth->fetchrow_array;
