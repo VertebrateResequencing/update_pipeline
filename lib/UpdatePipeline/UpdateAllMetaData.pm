@@ -193,9 +193,16 @@ sub _withdraw_lanes
 {
 	#Subroutine that withdraws lanes that have been deleted from iRODS, but remain in the database.
 	#This can only called if the -wdr flag is set on the command lane explicitly.
+    #However don't withdraw any lanes that have a run id less than minimum if
+    #specific_min_run was set
 	my ($self) = @_;
+    my $min = $self->specific_min_run;
   	foreach my $lane ( keys %{$self->vrtrack_lanes} ) {
 		my $lane_to_withdraw = VRTrack::Lane->new($self->_vrtrack, $self->vrtrack_lanes->{$lane});
+        if ($min) {
+            my ($run) = $lane =~ /^(\d+)/;
+            next if $run < $min; 
+        }
 		$lane_to_withdraw->is_withdrawn(1);
 		$lane_to_withdraw->update;	
 		print "The lane $lane has been withdrawn as it has been deleted from iRODS\n";
