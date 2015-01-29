@@ -123,13 +123,11 @@ if ( defined($lock_file) ) {
 }
 
 my $study_names;
-
 if ( defined($studyfile) ) {
     $study_names = UpdatePipeline::Studies->new( filename => $studyfile )->study_names;
 }
 else {
-    my @studyname = ($input_study_name);
-    $study_names = \@studyname;
+    $study_names = [$input_study_name];
 }
 
 unless ($species_name) {
@@ -147,7 +145,7 @@ if ( $parallel_processes == 1 ) {
         $vrtrack_lanes = {};
         foreach my $study (@$study_names) {
             foreach my $lane ( $vrtrack->get_lanes( project => [$study] ) ) {
-                $vrtrack_lanes->{ $lane->name } = $lane->id;
+                $vrtrack_lanes->{$study}->{ $lane->name } = $lane->id;
             }
         }
     }
@@ -179,19 +177,15 @@ else {
     my $pm = new Parallel::ForkManager($parallel_processes);
     foreach my $study_name ( @{$study_names} ) {
         $pm->start and next;    # do the fork
-        my @split_study_names;
-        push( @split_study_names, $study_name );
         my $vrtrack = VertRes::Utils::VRTrackFactory->instantiate( database => $db, mode => 'rw' );
         unless ($vrtrack) { die "Can't connect to tracking database: $db \n"; }
         if ($withdraw_del) {
-            foreach my $study (@$study_names) {
-                foreach my $lane ( $vrtrack->get_lanes( project => [$study] ) ) {
-                    $vrtrack_lanes->{ $lane->name } = $lane->id;
-                }
+            foreach my $lane ( $vrtrack->get_lanes( project => [$study_name] ) ) {
+                $vrtrack_lanes->{$study_name}->{ $lane->name } = $lane->id;
             }
         }
         my $update_pipeline = UpdatePipeline::UpdateAllMetaData->new(
-            study_names               => \@split_study_names,
+            study_names               => [$study_name],
             _vrtrack                  => $vrtrack,
             number_of_files_to_return => $number_of_files_to_return,
             verbose_output            => $verbose_output,

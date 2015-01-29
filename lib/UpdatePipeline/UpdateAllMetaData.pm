@@ -77,7 +77,9 @@ sub update
   my ($self) = @_;
 
   my %current_lane_names;
-  my $num_lanes_in_vrtrack = $self->vrtrack_lanes ? keys %{$self->vrtrack_lanes} : 0;
+  my $study_name = $self->study_names->[0];
+  my $vrtrack_lanes = $self->vrtrack_lanes->{$study_name};
+  my $num_lanes_in_vrtrack = $vrtrack_lanes ? keys %{$vrtrack_lanes} : 0;
   for my $file_metadata (@{$self->_files_metadata}) {
     $current_lane_names{$file_metadata->file_name_without_extension} = 1;
     if ($self->taxon_id && defined $self->species_name) {
@@ -106,12 +108,12 @@ sub update
     {
       $self->_exception_handler->add_exception($exception,$file_metadata->file_name_without_extension);
     }
-    if ( $self->vrtrack_lanes && $self->vrtrack_lanes->{$file_metadata->file_name_without_extension} ) {
-		delete $self->vrtrack_lanes->{$file_metadata->file_name_without_extension};
+    if ( $vrtrack_lanes && $vrtrack_lanes->{$file_metadata->file_name_without_extension} ) {
+		delete $vrtrack_lanes->{$file_metadata->file_name_without_extension};
 	}	
   }
-  if ( $self->vrtrack_lanes && keys %{$self->vrtrack_lanes} > 0 && scalar @{$self->_files_metadata} > 0 && $self->_check_irods_is_up ) {
-	  $self->_withdraw_lanes;
+  if ( $vrtrack_lanes && keys %{$vrtrack_lanes} > 0 && scalar @{$self->_files_metadata} > 0 && $self->_check_irods_is_up ) {
+	  $self->_withdraw_lanes($vrtrack_lanes);
   }
   if ( $num_lanes_in_vrtrack <= keys %current_lane_names ) {
       $self->_unwithdraw_lanes(\%current_lane_names);
@@ -191,14 +193,15 @@ sub _post_populate_file_metadata
 
 sub _withdraw_lanes
 {
-	#Subroutine that withdraws lanes that have been deleted from iRODS, but remain in the database.
-	#This can only called if the -wdr flag is set on the command lane explicitly.
-    #However don't withdraw any lanes that have a run id less than minimum if
-    #specific_min_run was set
-	my ($self) = @_;
+    # Subroutine that withdraws lanes that have been deleted from iRODS, but
+    # remain in the database. This can only called if the -wdr flag is set on
+    # the command line explicitly.
+    # However don't withdraw any lanes that have a run id less than minimum if
+    # specific_min_run was set
+	my ($self, $lanes) = @_;
     my $min = $self->specific_min_run;
-  	foreach my $lane ( keys %{$self->vrtrack_lanes} ) {
-		my $lane_to_withdraw = VRTrack::Lane->new($self->_vrtrack, $self->vrtrack_lanes->{$lane});
+  	foreach my $lane (keys %{$lanes}) {
+		my $lane_to_withdraw = VRTrack::Lane->new($self->_vrtrack, $lanes->{$lane});
         if ($min) {
             my ($run) = $lane =~ /^(\d+)/;
             next if $run < $min; 
